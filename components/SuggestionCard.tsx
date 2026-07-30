@@ -267,7 +267,7 @@ export function SuggestionCard({ result, priceTarget, onRemovePriceTarget }: Pro
 
       {/* AI opinions */}
       {suggestions.length > 0 ? (
-        <div className={`grid grid-cols-1 gap-3 ${suggestions.length === 2 ? "md:grid-cols-2" : suggestions.length >= 3 ? "md:grid-cols-3" : ""}`}>
+        <div className={`grid grid-cols-1 gap-3 ${suggestions.length >= 2 ? "md:grid-cols-2" : ""}`}>
           {suggestions.map((s, i) => (
             <OpinionCard key={s.model} suggestion={s} delay={80 + i * 20} />
           ))}
