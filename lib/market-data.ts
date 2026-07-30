@@ -54,11 +54,26 @@ interface YahooChartResponse {
   };
 }
 
-export async function fetchMarketData(
-  ticker: string,
-  period: ChartPeriod = DEFAULT_CHART_PERIOD
+/**
+ * Candidatos de símbolo Yahoo a partir de un input que puede venir en formato
+ * TradingView ("BCBA:VALO", tras un fallback previo) o como ticker simple.
+ * BYMA/pesos suele estar cubierto por Yahoo bajo el sufijo ".BA" (ej. GGAL.BA).
+ */
+function yahooSymbolCandidates(input: string): string[] {
+  const trimmed = input.trim().toUpperCase();
+  const base = trimmed.includes(":") ? trimmed.split(":")[1] : trimmed;
+
+  const candidates = [trimmed];
+  if (!base.includes(".")) candidates.push(`${base}.BA`);
+  if (base !== trimmed) candidates.push(base);
+
+  return Array.from(new Set(candidates));
+}
+
+async function fetchMarketDataForSymbol(
+  symbol: string,
+  period: ChartPeriod
 ): Promise<MarketData> {
-  const symbol = ticker.trim().toUpperCase();
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
     symbol
   )}?range=${period.range}&interval=${period.interval}`;
@@ -115,4 +130,22 @@ export async function fetchMarketData(
     lastPrice,
     changePercent,
   };
+}
+
+export async function fetchMarketData(
+  ticker: string,
+  period: ChartPeriod = DEFAULT_CHART_PERIOD
+): Promise<MarketData> {
+  const candidates = yahooSymbolCandidates(ticker);
+
+  let lastError: Error | null = null;
+  for (const symbol of candidates) {
+    try {
+      return await fetchMarketDataForSymbol(symbol, period);
+    } catch (err) {
+      lastError = err as Error;
+    }
+  }
+
+  throw lastError ?? new Error(`No se pudo obtener datos de mercado para ${ticker}`);
 }
