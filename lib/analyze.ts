@@ -9,7 +9,11 @@ function tvRecommendationSignal(recommendAll: number): string {
   return `TradingView: calificación técnica "${describeRecommendation(recommendAll)}" (score ${recommendAll.toFixed(2)})`;
 }
 
-export async function analyzeTicker(ticker: string, entryPrice?: number): Promise<AnalyzeResult> {
+export async function analyzeTicker(
+  ticker: string,
+  entryPrice?: number,
+  modelIds?: string[]
+): Promise<AnalyzeResult> {
   let market: MarketData;
   let indicators: IndicatorSnapshot;
   let technicalRating: TechnicalRating | null = null;
@@ -60,7 +64,7 @@ export async function analyzeTicker(ticker: string, entryPrice?: number): Promis
   let suggestions: TradingSuggestion[] = [];
   let suggestionError: string | null = null;
   try {
-    suggestions = await generateSuggestions(market, indicators, news, entryPrice);
+    suggestions = await generateSuggestions(market, indicators, news, entryPrice, modelIds);
   } catch (err) {
     suggestionError =
       err instanceof SuggestionUnavailableError

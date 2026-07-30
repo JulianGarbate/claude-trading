@@ -16,9 +16,11 @@ export async function POST(req: NextRequest) {
   }
 
   let ticker: string;
+  let models: string[] | undefined;
   try {
     const body = await req.json();
     ticker = String(body.ticker ?? "").trim();
+    models = Array.isArray(body.models) ? body.models.map(String) : undefined;
   } catch {
     return NextResponse.json({ error: "Body inválido" }, { status: 400 });
   }
@@ -28,7 +30,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await analyzeTicker(ticker);
+    const result = await analyzeTicker(ticker, undefined, models);
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json(

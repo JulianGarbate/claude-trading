@@ -6,7 +6,10 @@ import { PasswordGate } from "@/components/PasswordGate";
 import { TickerInput } from "@/components/TickerInput";
 import { WatchlistPanel } from "@/components/WatchlistPanel";
 import { SuggestionCard } from "@/components/SuggestionCard";
+import { ModelPicker } from "@/components/ModelPicker";
 import { authFetch } from "@/lib/api-client";
+import { getSelectedModels, setSelectedModels } from "@/lib/model-prefs";
+import { DEFAULT_MODEL_IDS } from "@/lib/llm-models";
 import type { AnalyzeResult } from "@/lib/types";
 import type { PriceTarget } from "@/lib/price-targets-store";
 
@@ -16,12 +19,20 @@ function HomeContent() {
   const [priceTarget, setPriceTarget] = useState<PriceTarget | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [models, setModels] = useState<string[]>(DEFAULT_MODEL_IDS);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- lee localStorage, solo puede ejecutarse client-side
+    setModels(getSelectedModels());
     authFetch("/api/watchlist")
       .then((res) => (res.ok ? res.json() : { tickers: [] }))
       .then((data) => setWatchlist(data.tickers ?? []));
   }, []);
+
+  function updateModels(ids: string[]) {
+    setModels(ids);
+    setSelectedModels(ids);
+  }
 
   async function addToWatchlist(ticker: string) {
     const res = await authFetch("/api/watchlist", {
@@ -64,7 +75,7 @@ function HomeContent() {
         const res = await authFetch("/api/price-targets", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ticker, entryPrice }),
+          body: JSON.stringify({ ticker, entryPrice, models }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? "Error desconocido");
@@ -75,7 +86,7 @@ function HomeContent() {
           authFetch("/api/analyze", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ticker }),
+            body: JSON.stringify({ ticker, models }),
           }),
           authFetch(`/api/price-targets?ticker=${encodeURIComponent(ticker)}`),
         ]);
@@ -105,6 +116,7 @@ function HomeContent() {
             Sugerencias de trading de corto plazo (días a semanas)
           </p>
           <TickerInput onAnalyze={analyze} onAddToWatchlist={addToWatchlist} loading={loading} />
+          <ModelPicker selected={models} onChange={updateModels} />
         </section>
 
         <section>

@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { MarketData } from "./market-data";
 import type { IndicatorSnapshot } from "./indicators";
 import type { NewsItem } from "./news";
+import { DEFAULT_MODEL_IDS, MODEL_OPTIONS } from "./llm-models";
 
 export interface TradingSuggestion {
   action: "COMPRAR" | "VENDER" | "MANTENER";
@@ -100,7 +101,7 @@ async function callGemini(prompt: string): Promise<TradingSuggestion> {
   return parseSuggestion(text, "gemini-flash-latest");
 }
 
-async function callGroq(prompt: string): Promise<TradingSuggestion> {
+async function callGroqModel(prompt: string, model: string, label: string): Promise<TradingSuggestion> {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error("GROQ_API_KEY no configurada");
 
@@ -111,7 +112,7 @@ async function callGroq(prompt: string): Promise<TradingSuggestion> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "llama-3.3-70b-versatile",
+      model,
       messages: [{ role: "user", content: prompt }],
       temperature: 0.3,
       max_tokens: 500,
@@ -124,15 +125,15 @@ async function callGroq(prompt: string): Promise<TradingSuggestion> {
 
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content ?? "";
-  return parseSuggestion(text, "llama-3.3-70b-versatile (groq)");
+  return parseSuggestion(text, `${label} (groq)`);
 }
 
-async function callOpenRouter(prompt: string): Promise<TradingSuggestion> {
+async function callOpenRouterModel(prompt: string, model: string, label: string): Promise<TradingSuggestion> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY no configurada");
 
   // Los modelos gratuitos de OpenRouter (con razonamiento) pueden ser lentos;
-  // no vale la pena esperarlos si Gemini/Groq ya respondieron rápido.
+  // no vale la pena esperarlos si otros proveedores ya respondieron rápido.
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20_000);
 
@@ -145,7 +146,7 @@ async function callOpenRouter(prompt: string): Promise<TradingSuggestion> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-oss-20b:free",
+        model,
         messages: [{ role: "user", content: prompt }],
         temperature: 0.3,
         max_tokens: 800,
@@ -160,9 +161,15 @@ async function callOpenRouter(prompt: string): Promise<TradingSuggestion> {
     throw new Error(`OpenRouter error: HTTP ${res.status}`);
   }
 
-  const data = await res.json();
+  // Algunos modelos lentos de OpenRouter intercalan líneas de keep-alive
+  // (espacios en blanco) antes del JSON real cuando tardan en responder.
+  const raw = await res.text();
+  const jsonStart = raw.indexOf("{");
+  if (jsonStart === -1) throw new Error("OpenRouter no devolvió una respuesta válida");
+
+  const data = JSON.parse(raw.slice(jsonStart));
   const text = data.choices?.[0]?.message?.content ?? "";
-  return parseSuggestion(text, "gpt-oss-20b (openrouter)");
+  return parseSuggestion(text, `${label} (openrouter)`);
 }
 
 async function callNvidiaNim(prompt: string): Promise<TradingSuggestion> {
@@ -192,6 +199,18 @@ async function callNvidiaNim(prompt: string): Promise<TradingSuggestion> {
   return parseSuggestion(text, "llama-3.1-70b-instruct (nvidia-nim)");
 }
 
+// Registro server-side: cada modelo elegible mapeado a su función de llamada real.
+const MODEL_CALLS: Record<string, (prompt: string) => Promise<TradingSuggestion>> = {
+  gemini: callGemini,
+  "groq-llama-3.3-70b": (p) => callGroqModel(p, "llama-3.3-70b-versatile", "Llama 3.3 70B"),
+  "groq-llama-3.1-8b": (p) => callGroqModel(p, "llama-3.1-8b-instant", "Llama 3.1 8B"),
+  "groq-gpt-oss-120b": (p) => callGroqModel(p, "openai/gpt-oss-120b", "GPT-OSS 120B"),
+  "or-nemotron-super": (p) =>
+    callOpenRouterModel(p, "nvidia/nemotron-3-super-120b-a12b:free", "Nemotron 3 Super"),
+  "or-gemma-31b": (p) => callOpenRouterModel(p, "google/gemma-4-31b-it:free", "Gemma 4 31B"),
+  "or-gpt-oss-20b": (p) => callOpenRouterModel(p, "openai/gpt-oss-20b:free", "GPT-OSS 20B"),
+};
+
 export class SuggestionUnavailableError extends Error {
   constructor(public providerErrors: string[]) {
     super("Ningún proveedor de IA disponible");
@@ -200,34 +219,33 @@ export class SuggestionUnavailableError extends Error {
 }
 
 /**
- * Consulta Gemini, Groq y OpenRouter en paralelo para comparar hasta 3 opiniones
- * independientes. Si las tres fallan, recurre a NVIDIA NIM como último respaldo.
+ * Consulta en paralelo los modelos seleccionados por el usuario (o los
+ * default) para comparar sus opiniones. Si todos fallan, recurre a
+ * NVIDIA NIM como último respaldo.
  */
 export async function generateSuggestions(
   market: MarketData,
   indicators: IndicatorSnapshot,
   news: NewsItem[],
-  entryPrice?: number
+  entryPrice?: number,
+  selectedModelIds?: string[]
 ): Promise<TradingSuggestion[]> {
   const prompt = buildPrompt(market, indicators, news, entryPrice);
 
-  const [geminiResult, groqResult, openRouterResult] = await Promise.allSettled([
-    callGemini(prompt),
-    callGroq(prompt),
-    callOpenRouter(prompt),
-  ]);
+  const validIds = new Set(MODEL_OPTIONS.map((m) => m.id));
+  const ids = (selectedModelIds?.filter((id) => validIds.has(id)) ?? []).length
+    ? selectedModelIds!.filter((id) => validIds.has(id))
+    : DEFAULT_MODEL_IDS;
+
+  const results = await Promise.allSettled(ids.map((id) => MODEL_CALLS[id](prompt)));
 
   const suggestions: TradingSuggestion[] = [];
   const errors: string[] = [];
 
-  if (geminiResult.status === "fulfilled") suggestions.push(geminiResult.value);
-  else errors.push(`Gemini: ${geminiResult.reason.message}`);
-
-  if (groqResult.status === "fulfilled") suggestions.push(groqResult.value);
-  else errors.push(`Groq: ${groqResult.reason.message}`);
-
-  if (openRouterResult.status === "fulfilled") suggestions.push(openRouterResult.value);
-  else errors.push(`OpenRouter: ${openRouterResult.reason.message}`);
+  results.forEach((result, i) => {
+    if (result.status === "fulfilled") suggestions.push(result.value);
+    else errors.push(`${ids[i]}: ${result.reason.message}`);
+  });
 
   if (suggestions.length > 0) return suggestions;
 

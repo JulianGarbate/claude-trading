@@ -41,10 +41,12 @@ export async function POST(req: NextRequest) {
 
   let ticker: string;
   let entryPrice: number;
+  let models: string[] | undefined;
   try {
     const body = await req.json();
     ticker = String(body.ticker ?? "").trim();
     entryPrice = Number(body.entryPrice);
+    models = Array.isArray(body.models) ? body.models.map(String) : undefined;
   } catch {
     return NextResponse.json({ error: "Body inválido" }, { status: 400 });
   }
@@ -54,7 +56,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await analyzeTicker(ticker, entryPrice);
+    const result = await analyzeTicker(ticker, entryPrice, models);
 
     const sellTarget = average(result.suggestions.map((s) => s.sellTarget));
     const stopLoss = average(result.suggestions.map((s) => s.stopLoss));

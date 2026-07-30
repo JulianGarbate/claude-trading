@@ -37,10 +37,14 @@ function macdLabel(histogram: number | null): { label: string; bullish: boolean 
 }
 
 function providerLabel(model: string): string {
-  if (model.includes("gemini")) return "Gemini";
-  if (model.includes("groq")) return "Groq (Llama 3.3)";
-  if (model.includes("openrouter")) return "OpenRouter (Llama 3.1)";
-  if (model.includes("nvidia")) return "NVIDIA NIM";
+  if (model === "gemini-flash-latest") return "Gemini";
+  if (model.includes("nvidia-nim")) return "NVIDIA NIM";
+  // Formato "Nombre del modelo (proveedor)" -> "Nombre del modelo · Proveedor"
+  const match = model.match(/^(.+) \((\w+)\)$/);
+  if (match) {
+    const [, label, provider] = match;
+    return `${label} · ${provider[0].toUpperCase()}${provider.slice(1)}`;
+  }
   return model;
 }
 
