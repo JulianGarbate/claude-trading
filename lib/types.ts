@@ -16,7 +16,8 @@ export interface AnalyzeResult {
   prices: PricePoint[];
   indicators: IndicatorSnapshot;
   news: NewsItem[];
-  suggestion: TradingSuggestion;
+  suggestions: TradingSuggestion[];
+  suggestionError: string | null;
   technicalRating: TechnicalRating | null;
   timestamp: string;
 }

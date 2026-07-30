@@ -12,7 +12,7 @@ Usuario único (uso personal, sin multiusuario), consultando principalmente desd
 
 ## Product Purpose
 
-PWA que genera sugerencias de trading on-demand (comprar/vender/mantener) combinando indicadores técnicos, calificación de TradingView, noticias recientes y un modelo de lenguaje (Gemini) que redacta el razonamiento. No ejecuta operaciones ni sustituye asesoramiento financiero profesional.
+PWA que genera sugerencias de trading de **corto plazo** (posiciones de días a un máximo de 2-3 semanas), **exclusivamente on-demand** (el usuario dispara el análisis desde la app; no hay jobs en segundo plano ni notificaciones), combinando indicadores técnicos, calificación de TradingView, noticias recientes y hasta dos modelos de lenguaje en paralelo (Gemini + Groq) que se comparan entre sí para dar una opinión más robusta. No es para inversión de largo plazo, no ejecuta operaciones ni sustituye asesoramiento financiero profesional.
 
 ## Positioning
 
@@ -21,9 +21,9 @@ A diferencia de mirar Yahoo Finance o TradingView por separado, esta app resume 
 ## Operating Context
 
 - Watchlist persistida server-side (Redis/Upstash), consultada desde cualquier dispositivo.
-- Cron dos veces al día que escanea la watchlist y notifica por push solo ante señales fuertes.
+- Sin jobs en segundo plano: todo análisis lo dispara el usuario manualmente desde la PWA.
 - Gate de acceso por contraseña simple (uso personal, sin sistema de cuentas).
-- Presupuesto $0: todas las fuentes de datos (Yahoo Finance, TradingView, Google News) son gratuitas y sin API key; el LLM (Gemini) tiene free tier limitado.
+- Presupuesto $0: todas las fuentes de datos (Yahoo Finance, TradingView, Google News) son gratuitas y sin API key; los LLMs (Gemini, Groq, NVIDIA NIM) tienen free tier.
 
 ## Capabilities and Constraints
 
@@ -49,6 +49,7 @@ Ninguna (sin testimonios, casos de estudio ni datos de uso real todavía — pro
 3. La app es una herramienta informativa, no un simulador de trading — evitar cualquier elemento visual que sugiera ejecución de operaciones reales.
 4. Polish y microinteracciones (animaciones, transiciones, feedback táctil) son prioridad explícita del usuario, siempre que no compliquen el mantenimiento del código.
 5. Dark theme es un compromiso fijo, no una opción de configuración.
+6. Horizonte de corto plazo es un compromiso fijo: prompts, indicadores, rango de gráfico y copy deben reflejar días-semanas, nunca inversión de largo plazo.
 
 ## Accessibility & Inclusion
 

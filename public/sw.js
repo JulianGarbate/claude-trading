@@ -1,4 +1,4 @@
-const CACHE_NAME = "trading-pwa-v2";
+const CACHE_NAME = "trading-pwa-v4";
 const SHELL_ASSETS = ["/manifest.json", "/icon-192.png", "/icon-512.png"];
 
 self.addEventListener("install", (event) => {
@@ -51,7 +51,7 @@ self.addEventListener("fetch", (event) => {
 });
 
 self.addEventListener("push", (event) => {
-  let data = { title: "Trading Suggestions", body: "Nuevo análisis disponible" };
+  let data = { title: "Trading Suggestions", body: "Actualización de precio objetivo" };
   try {
     data = event.data.json();
   } catch {

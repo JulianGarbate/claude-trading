@@ -1,7 +1,7 @@
 import { fetchMarketData, type MarketData } from "./market-data";
 import { computeIndicators, type IndicatorSnapshot } from "./indicators";
 import { fetchNews } from "./news";
-import { generateSuggestion } from "./llm";
+import { generateSuggestions, SuggestionUnavailableError, type TradingSuggestion } from "./llm";
 import { fetchTradingViewSnapshot, describeRecommendation } from "./tradingview";
 import type { AnalyzeResult, TechnicalRating } from "./types";
 
@@ -9,7 +9,7 @@ function tvRecommendationSignal(recommendAll: number): string {
   return `TradingView: calificación técnica "${describeRecommendation(recommendAll)}" (score ${recommendAll.toFixed(2)})`;
 }
 
-export async function analyzeTicker(ticker: string): Promise<AnalyzeResult> {
+export async function analyzeTicker(ticker: string, entryPrice?: number): Promise<AnalyzeResult> {
   let market: MarketData;
   let indicators: IndicatorSnapshot;
   let technicalRating: TechnicalRating | null = null;
@@ -56,7 +56,17 @@ export async function analyzeTicker(ticker: string): Promise<AnalyzeResult> {
   }
 
   const news = await fetchNews(ticker, 5);
-  const suggestion = await generateSuggestion(market, indicators, news);
+
+  let suggestions: TradingSuggestion[] = [];
+  let suggestionError: string | null = null;
+  try {
+    suggestions = await generateSuggestions(market, indicators, news, entryPrice);
+  } catch (err) {
+    suggestionError =
+      err instanceof SuggestionUnavailableError
+        ? "Te quedaste sin cuota de IA por hoy. El precio, el gráfico y los indicadores siguen disponibles — la sugerencia de la IA vuelve a estar disponible mañana."
+        : (err as Error).message;
+  }
 
   return {
     ticker: market.ticker,
@@ -66,7 +76,8 @@ export async function analyzeTicker(ticker: string): Promise<AnalyzeResult> {
     prices: market.prices,
     indicators,
     news,
-    suggestion,
+    suggestions,
+    suggestionError,
     technicalRating,
     timestamp: new Date().toISOString(),
   };

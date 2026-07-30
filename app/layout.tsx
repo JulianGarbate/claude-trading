@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const inter = Inter({
@@ -38,11 +39,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-background text-on-surface font-sans">
         {children}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js')); }`,
-          }}
-        />
+        <Script id="register-sw" strategy="afterInteractive">
+          {`if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js')); }`}
+        </Script>
       </body>
     </html>
   );

@@ -16,6 +16,14 @@ function sma(values: number[], period: number): number | null {
   return slice.reduce((sum, v) => sum + v, 0) / period;
 }
 
+export function smaSeries(values: number[], period: number): (number | null)[] {
+  return values.map((_, i) => {
+    if (i < period - 1) return null;
+    const slice = values.slice(i - period + 1, i + 1);
+    return slice.reduce((sum, v) => sum + v, 0) / period;
+  });
+}
+
 function emaSeries(values: number[], period: number): (number | null)[] {
   const result: (number | null)[] = new Array(values.length).fill(null);
   if (values.length < period) return result;

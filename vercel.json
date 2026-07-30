@@ -1,12 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/cron/scan-watchlist",
-      "schedule": "0 14 * * 1-5"
-    },
-    {
-      "path": "/api/cron/scan-watchlist",
-      "schedule": "30 20 * * 1-5"
+      "path": "/api/cron/check-targets",
+      "schedule": "0 20 * * 1-5"
     }
   ]
 }

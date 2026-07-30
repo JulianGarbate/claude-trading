@@ -14,6 +14,24 @@ export interface MarketData {
   changePercent: number;
 }
 
+export interface ChartPeriod {
+  id: string;
+  label: string;
+  range: string;
+  interval: string;
+}
+
+export const CHART_PERIODS: ChartPeriod[] = [
+  { id: "1d", label: "1D", range: "1d", interval: "5m" },
+  { id: "5d", label: "5D", range: "5d", interval: "15m" },
+  { id: "1mo", label: "1M", range: "1mo", interval: "1d" },
+  { id: "3mo", label: "3M", range: "3mo", interval: "1d" },
+  { id: "6mo", label: "6M", range: "6mo", interval: "1d" },
+  { id: "1y", label: "1A", range: "1y", interval: "1d" },
+];
+
+export const DEFAULT_CHART_PERIOD = CHART_PERIODS.find((p) => p.id === "3mo")!;
+
 interface YahooChartResponse {
   chart: {
     result: Array<{
@@ -36,11 +54,14 @@ interface YahooChartResponse {
   };
 }
 
-export async function fetchMarketData(ticker: string): Promise<MarketData> {
+export async function fetchMarketData(
+  ticker: string,
+  period: ChartPeriod = DEFAULT_CHART_PERIOD
+): Promise<MarketData> {
   const symbol = ticker.trim().toUpperCase();
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
     symbol
-  )}?range=6mo&interval=1d`;
+  )}?range=${period.range}&interval=${period.interval}`;
 
   const res = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; trading-pwa/1.0)" },
@@ -61,7 +82,7 @@ export async function fetchMarketData(ticker: string): Promise<MarketData> {
   const quote = result.indicators.quote[0];
   const prices: PricePoint[] = result.timestamp
     .map((ts, i) => ({
-      date: new Date(ts * 1000).toISOString().slice(0, 10),
+      date: new Date(ts * 1000).toISOString(),
       open: quote?.open?.[i],
       high: quote?.high?.[i],
       low: quote?.low?.[i],

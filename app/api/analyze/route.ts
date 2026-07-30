@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { analyzeTicker } from "@/lib/analyze";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 function isAuthorized(req: NextRequest): boolean {
   const appPassword = process.env.APP_PASSWORD;

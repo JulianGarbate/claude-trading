@@ -73,7 +73,7 @@ export function InstallPrompt() {
       )}
       <button
         onClick={enablePush}
-        title={pushEnabled ? "Notificaciones activas" : "Activar notificaciones"}
+        title={pushEnabled ? "Notificaciones activas" : "Activar notificaciones de precio objetivo"}
         className={`material-symbols-outlined motion-safe:active:scale-90 transition-[transform,background-color,color] duration-150 ease-snappy p-1 rounded-full text-[20px] ${
           pushEnabled ? "text-secondary" : "text-on-surface-variant hover:bg-surface-container"
         }`}
